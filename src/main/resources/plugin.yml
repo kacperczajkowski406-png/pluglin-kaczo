@@ -1,0 +1,23 @@
+name: Chat2Discord
+version: 1.0.0
+main: pl.chat2discord.paper.Chat2DiscordPlugin
+api-version: '1.21'
+description: Wysyla wiadomosci graczy na Discord (webhook) i pokazuje je adminom na serwerze.
+author: Kacper
+
+commands:
+  chat2discord:
+    description: Zarzadzanie pluginem Chat2Discord
+    usage: /chat2discord reload
+    permission: chat2discord.admin
+
+permissions:
+  chat2discord.use:
+    description: Pozwala uzywac komendy wysylajacej wiadomosc na Discord
+    default: true
+  chat2discord.see:
+    description: Widzi w grze wiadomosci wysylane przez graczy na Discord
+    default: op
+  chat2discord.admin:
+    description: Pozwala uzyc /chat2discord reload
+    default: op

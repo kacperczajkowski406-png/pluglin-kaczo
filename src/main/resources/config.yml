@@ -1,0 +1,36 @@
+# ===== Chat2Discord (Paper) - konfiguracja =====
+# Po zmianach wpisz /chat2discord reload (bez restartu serwera).
+
+# URL webhooka Discorda (Ustawienia kanalu -> Integracje -> Webhooki).
+# Mozesz zostawic puste - wtedy wiadomosci beda widoczne tylko na serwerze.
+webhook_url: ""
+
+# Komendy (bez ukosnika), ktore gracz moze wpisac. Mozesz je zmieniac dowolnie.
+# Przyklad: gracz pisze /dc cokolwiek -> bot wysyla na Discorda nick i wiadomosc.
+# Nie uzywaj nazw istniejacych komend (say, msg, give...).
+commands:
+  - dc
+
+# Zwykly czat (opcjonalnie)
+chat:
+  # off = tylko komendy, filter = tylko wiadomosci z triggerem, all = caly czat
+  mode: off
+  triggers:
+    - "!dc"
+  # starts_with / contains / equals
+  match: starts_with
+  strip_trigger: true
+
+# Wyglad wiadomosci na Discordzie. {player} = nick, {message} = tresc
+format: "**{player}** wysłał: {message}"
+
+# Potwierdzenie dla gracza po wyslaniu (kody kolorow &)
+notify_player: true
+notify_text: "&a✔ Wysłano na Discord"
+
+# Podglad na serwerze: adminowie z uprawnieniem chat2discord.see (domyslnie OP)
+# widza w czacie kazda wiadomosc wyslana przez graczy.
+admin_view:
+  enabled: true
+  format: "&8[&bC2D&8] &f{player}&7: &f{message}"
+  log_to_console: true
