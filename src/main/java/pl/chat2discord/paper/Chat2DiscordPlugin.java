@@ -14,6 +14,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.net.URI;
@@ -24,6 +25,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Chat2DiscordPlugin extends JavaPlugin implements Listener {
 
@@ -42,9 +45,16 @@ public class Chat2DiscordPlugin extends JavaPlugin implements Listener {
         boolean adminView = true;
         String adminFormat = "&8[&bC2D&8] &f{player}&7: &f{message}";
         boolean logToConsole = true;
+        boolean premiumCheck = true;
+        String premiumYes = "🟢 Premium";
+        String premiumNo = "🔴 Non-premium";
+        String premiumUnknown = "⏳ Sprawdzanie...";
     }
 
     private volatile Settings s = new Settings();
+
+    // Status konta per gracz: TRUE = premium, FALSE = non-premium, brak wpisu = jeszcze nie sprawdzono
+    private final Map<String, Boolean> premiumCache = new ConcurrentHashMap<>();
 
     @Override
     public void onEnable() {
@@ -83,10 +93,52 @@ public class Chat2DiscordPlugin extends JavaPlugin implements Listener {
         n.adminView = cfg.getBoolean("admin_view.enabled", true);
         n.adminFormat = cfg.getString("admin_view.format", n.adminFormat);
         n.logToConsole = cfg.getBoolean("admin_view.log_to_console", true);
+        n.premiumCheck = cfg.getBoolean("premium_check.enabled", true);
+        n.premiumYes = cfg.getString("premium_check.label_premium", n.premiumYes);
+        n.premiumNo = cfg.getString("premium_check.label_non_premium", n.premiumNo);
+        n.premiumUnknown = cfg.getString("premium_check.label_unknown", n.premiumUnknown);
 
         s = n;
         if (n.webhookUrl.isEmpty()) getLogger().warning("Brak webhook_url - wiadomosci beda widoczne tylko na serwerze.");
         getLogger().info("Komendy: " + n.commands + ", czat: " + n.chatMode);
+    }
+
+    // ---------- status konta: sprawdzany raz, przy wejsciu gracza na serwer ----------
+    @EventHandler
+    public void onJoin(PlayerJoinEvent e) {
+        if (!s.premiumCheck) return;
+        checkPremiumAsync(e.getPlayer().getName());
+    }
+
+    private void checkPremiumAsync(String name) {
+        // Serwer w online-mode przepuszcza tylko graczy zweryfikowanych przez Mojang/Microsoft -
+        // wiec kazdy, kto wszedl, jest na pewno premium, bez pytania Mojanga.
+        if (Bukkit.getServer().getOnlineMode()) {
+            premiumCache.put(name.toLowerCase(Locale.ROOT), true);
+            return;
+        }
+        // Serwer w offline-mode (tzw. "cracked") nie weryfikuje gracza, wiec pytamy Mojanga,
+        // czy ten NICK nalezy do jakiegos zarejestrowanego konta premium.
+        // UWAGA: to sprawdza tylko sam nick, a nie to, czy wlasnie TA osoba jest jego wlascicielem -
+        // kazdy moze wejsc pod cudzym nickiem na serwer offline-mode.
+        Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+            try {
+                HttpRequest req = HttpRequest.newBuilder(
+                                URI.create("https://api.mojang.com/users/profiles/minecraft/" + name))
+                        .GET().build();
+                HttpResponse<Void> resp = HTTP.send(req, HttpResponse.BodyHandlers.discarding());
+                premiumCache.put(name.toLowerCase(Locale.ROOT), resp.statusCode() == 200);
+            } catch (Exception ex) {
+                getLogger().warning("Nie udalo sie sprawdzic statusu konta " + name + ": " + ex.getMessage());
+                premiumCache.remove(name.toLowerCase(Locale.ROOT));
+            }
+        });
+    }
+
+    private String premiumLabel(Settings c, String nick) {
+        Boolean v = premiumCache.get(nick.toLowerCase(Locale.ROOT));
+        if (v == null) return c.premiumUnknown;
+        return v ? c.premiumYes : c.premiumNo;
     }
 
     // ---------- komendy wpisywane przez graczy (/dc cokolwiek) ----------
@@ -134,20 +186,23 @@ public class Chat2DiscordPlugin extends JavaPlugin implements Listener {
 
     private void dispatch(Settings c, Player p, String msg) {
         String nick = p.getName();
+        String premium = c.premiumCheck ? premiumLabel(c, nick) : "";
 
         if (!c.webhookUrl.isBlank()) {
             String out = c.format
                     .replace("{player}", escapeMd(nick))
+                    .replace("{premium}", premium)
                     .replace("{message}", msg);
             send(c.webhookUrl, out);
         }
 
-        if (c.logToConsole) getLogger().info("[C2D] " + nick + ": " + msg);
+        if (c.logToConsole) getLogger().info("[C2D] " + nick + " (" + premium + "): " + msg);
 
         Bukkit.getScheduler().runTask(this, () -> {
             if (c.adminView) {
                 Component line = LegacyComponentSerializer.legacyAmpersand().deserialize(c.adminFormat)
                         .replaceText(b -> b.matchLiteral("{player}").replacement(Component.text(nick)))
+                        .replaceText(b -> b.matchLiteral("{premium}").replacement(Component.text(premium)))
                         .replaceText(b -> b.matchLiteral("{message}").replacement(Component.text(msg)));
                 for (Player online : Bukkit.getOnlinePlayers()) {
                     if (online.hasPermission("chat2discord.see")) online.sendMessage(line);

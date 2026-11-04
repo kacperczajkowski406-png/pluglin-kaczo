@@ -21,8 +21,23 @@ chat:
   match: starts_with
   strip_trigger: true
 
-# Wyglad wiadomosci na Discordzie. {player} = nick, {message} = tresc
-format: "**{player}** wysłał: {message}"
+# Wyglad wiadomosci na Discordzie. {player} = nick, {message} = tresc, {premium} = status konta
+format: "**{player}** [{premium}] wysłał: {message}"
+
+# Status konta (premium / non-premium) pokazywany na Discordzie i w podgladzie na serwerze.
+#
+# Jesli serwer ma online-mode: true w server.properties - kazdy, kto wszedl, jest
+# zweryfikowany przez Mojang/Microsoft, wiec status jest ustawiany od razu, bez pytania Mojanga.
+#
+# Jesli serwer ma online-mode: false (tzw. "cracked") - serwer NIE weryfikuje graczy,
+# wiec plugin pyta publiczne API Mojanga, czy dany NICK nalezy do jakiegos zarejestrowanego
+# konta premium. To sprawdza tylko sam nick, a nie to, czy wlasnie ten gracz jest jego
+# wlascicielem - na serwerze offline-mode kazdy moze wejsc pod dowolnym, cudzym nickiem.
+premium_check:
+  enabled: true
+  label_premium: "🟢 Premium"
+  label_non_premium: "🔴 Non-premium"
+  label_unknown: "⏳ Sprawdzanie..."
 
 # Potwierdzenie dla gracza po wyslaniu (kody kolorow &)
 notify_player: true
@@ -32,5 +47,5 @@ notify_text: "&a✔ Wysłano na Discord"
 # widza w czacie kazda wiadomosc wyslana przez graczy.
 admin_view:
   enabled: true
-  format: "&8[&bC2D&8] &f{player}&7: &f{message}"
+  format: "&8[&bC2D&8] &f{player}&7 [{premium}]&7: &f{message}"
   log_to_console: true

@@ -34,9 +34,15 @@ Gotowy plik: `build/libs/chat2discord-1.0.0.jar`
 ## Konfiguracja
 - `commands` – nazwy komend (bez `/`), np. `dc`, `zglos`, `name`.
 - `chat.mode` – zwykły czat: `off`, `filter` (tylko z triggerem, np. `!dc`), `all`.
-- `format` – wygląd na Discordzie (`{player}`, `{message}`).
+- `format` – wygląd na Discordzie (`{player}`, `{message}`, `{premium}`).
 - `admin_view` – podgląd dla adminów w grze i w konsoli.
 - `notify_player` / `notify_text` – potwierdzenie dla gracza.
+- `premium_check` – pokazuje przy wiadomości, czy gracz jest na koncie premium.
+
+### Jak działa sprawdzanie premium/non-premium
+- Jeśli serwer ma `online-mode: true` w `server.properties` – każdy, kto wszedł, jest zweryfikowany przez Mojang/Microsoft, więc status pokazuje się od razu jako Premium, bez żadnego zapytania.
+- Jeśli serwer ma `online-mode: false` (tzw. "cracked") – serwer nie weryfikuje graczy, więc plugin pyta publiczne API Mojanga, czy dany **nick** jest zarejestrowany jako konto premium. To sprawdza tylko sam nick, a nie to, czy właśnie ta osoba jest jego właścicielem – na serwerze offline-mode każdy może wejść pod dowolnym, cudzym nickiem, więc traktuj to jako orientacyjną informację, a nie dowód.
+- Wyłączysz to ustawiając `premium_check.enabled: false`.
 
 Pingi (@everyone / @here) są wyłączone. Nie używaj nazw komend, które już istnieją (`say`, `msg`, `give`).
 
